@@ -1,0 +1,21 @@
+From 8a4748bf7b7f06f4d58aca7c38d5bc0e1276d09c Mon Sep 17 00:00:00 2001
+From: Daniel <dany7915@gmail.com>
+Date: Fri, 28 Jun 2024 10:15:29 +0000
+Subject: [PATCH] KIA_K5_HEV_2020 Ecu.fwdCamera added
+
+---
+ selfdrive/car/hyundai/fingerprints.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/selfdrive/car/hyundai/fingerprints.py b/selfdrive/car/hyundai/fingerprints.py
+index b426ec9fb0..aff66f86c0 100644
+--- a/selfdrive/car/hyundai/fingerprints.py
++++ b/selfdrive/car/hyundai/fingerprints.py
+@@ -621,6 +621,7 @@
+       b'\xf1\x00DL3 MDPS C 1.00 1.02 56310-L7220 4DLHC102',
+     ],
+     (Ecu.fwdCamera, 0x7c4, None): [
++      b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.01 99210-L2000 191022',
+       b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.02 99210-L2000 200309',
+       b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.04 99210-L2000 210527',
+     ],
