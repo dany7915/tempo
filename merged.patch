@@ -1,0 +1,131 @@
+From 9311e4edc37fcb208e1299f4c8a2ddaa7397f7b4 Mon Sep 17 00:00:00 2001
+From: Daniel <dany7915@gmail.com>
+Date: Wed, 3 Jul 2024 12:26:15 +0000
+Subject: [PATCH] personal use
+
+---
+ selfdrive/car/hyundai/carcontroller.py               |  2 +-
+ selfdrive/car/hyundai/fingerprints.py                | 12 ++++++++++++
+ selfdrive/car/hyundai/interface.py                   |  4 +++-
+ selfdrive/car/hyundai/values.py                      |  5 +++++
+ selfdrive/car/torque_data/override.toml              |  1 +
+ .../controls/lib/longitudinal_mpc_lib/long_mpc.py    |  2 +-
+ selfdrive/controls/lib/longitudinal_planner.py       |  5 ++++-
+ 7 files changed, 27 insertions(+), 4 deletions(-)
+
+diff --git a/selfdrive/car/hyundai/carcontroller.py b/selfdrive/car/hyundai/carcontroller.py
+index f640f6529a..d4e600ceea 100644
+--- a/selfdrive/car/hyundai/carcontroller.py
++++ b/selfdrive/car/hyundai/carcontroller.py
+@@ -284,7 +284,7 @@ def update(self, CC, CS, now_nanos):
+           stopping = stopping and CS.out.vEgoRaw < 0.05
+ 
+         # TODO: unclear if this is needed
+-        jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
++        jerk = 1.5 if actuators.longControlState == LongCtrlState.pid else 1.0
+         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
+         can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, jerk, int(self.frame / 2),
+                                                         hud_control, set_speed_in_units, stopping,
+diff --git a/selfdrive/car/hyundai/fingerprints.py b/selfdrive/car/hyundai/fingerprints.py
+index 7f53e63527..9c0e424be3 100644
+--- a/selfdrive/car/hyundai/fingerprints.py
++++ b/selfdrive/car/hyundai/fingerprints.py
+@@ -618,6 +618,7 @@
+       b'\xf1\x00DL3 MDPS C 1.00 1.02 56310-L7220 4DLHC102',
+     ],
+     (Ecu.fwdCamera, 0x7c4, None): [
++      b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.01 99210-L2000 191022',
+       b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.02 99210-L2000 200309',
+       b'\xf1\x00DL3HMFC  AT KOR LHD 1.00 1.04 99210-L2000 210527',
+     ],
+@@ -1157,6 +1158,17 @@
+       b'\xf1\x00US4_ RDR -----      1.00 1.00 99110-CG000         ',
+     ],
+   },
++  CAR.KIA_K9_2019: {
++    (Ecu.fwdRadar, 0x7d0, None): [
++      b'\xf1\x00RJ__ SCC FHCUP      1.01 1.01 99110-J6000         ',
++    ],
++    (Ecu.eps, 0x7d4, None): [
++      b'\xf1\x00RJ  MDPS R 1.00 1.00 56320-J6000 8118',
++    ],
++    (Ecu.fwdCamera, 0x7c4, None): [
++      b'\xf1\x00RJ  MFC  AT KOR LHD 1.00 1.01 99211-J6000 180228',
++    ],
++  },
+ 
+   # Non SCC
+   CAR.GENESIS_G70_2021_NON_SCC: {
+diff --git a/selfdrive/car/hyundai/interface.py b/selfdrive/car/hyundai/interface.py
+index e1f9b49fb6..2d0ee1cb3f 100644
+--- a/selfdrive/car/hyundai/interface.py
++++ b/selfdrive/car/hyundai/interface.py
+@@ -183,7 +183,9 @@ def _get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs):
+       ret.minSteerSpeed = 0.
+ 
+     if Params().get_bool("HkgSmoothStop"):
+-      ret.vEgoStopping = 0.1
++      ret.vEgoStopping = 0.05
++      ret.stoppingDecelRate = 0.05
++      ret.startAccel = 0.
+ 
+     return ret
+ 
+diff --git a/selfdrive/car/hyundai/values.py b/selfdrive/car/hyundai/values.py
+index 83aa8ce5d4..44a30e9097 100644
+--- a/selfdrive/car/hyundai/values.py
++++ b/selfdrive/car/hyundai/values.py
+@@ -375,6 +375,11 @@ class CAR(Platforms):
+     # mass: https://carprices.ae/brands/kia/2023/k8/1.6-turbo-hybrid, steerRatio: guesstimate from K5 platform
+     CarSpecs(mass=1630, wheelbase=2.895, steerRatio=13.27)
+   )
++  KIA_K9_2019 = HyundaiPlatformConfig(
++    [HyundaiCarDocs("Kia K9 2019", car_parts=CarParts.common([CarHarness.hyundai_d]))],
++    # steerRatio = variable
++    CarSpecs(mass=2005, wheelbase=3.105, steerRatio=14.5, tireStiffnessFactor=0.5)
++  )
+   KIA_NIRO_EV = HyundaiPlatformConfig(
+     [
+       HyundaiCarDocs("Kia Niro EV 2019", "All", video_link="https://www.youtube.com/watch?v=lT7zcG6ZpGo", car_parts=CarParts.common([CarHarness.hyundai_h])),
+diff --git a/selfdrive/car/torque_data/override.toml b/selfdrive/car/torque_data/override.toml
+index 2949bbb82f..6853543d9f 100644
+--- a/selfdrive/car/torque_data/override.toml
++++ b/selfdrive/car/torque_data/override.toml
+@@ -68,6 +68,7 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
+ "HYUNDAI_CUSTIN_1ST_GEN" = [2.5, 2.5, 0.1]
+ "LEXUS_GS_F" = [2.5, 2.5, 0.08]
+ "HYUNDAI_STARIA_4TH_GEN" = [1.8, 2.0, 0.15]
++"KIA_K9_2019" = [2.5, 2.5, 0.1]
+ 
+ # Dashcam or fallback configured as ideal car
+ "MOCK" = [10.0, 10, 0.0]
+diff --git a/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py b/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py
+index cba398bcca..5aaa86467b 100755
+--- a/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py
++++ b/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py
+@@ -40,7 +40,7 @@
+ A_CHANGE_COST = 200.
+ DANGER_ZONE_COST = 100.
+ CRASH_DISTANCE = .25
+-LEAD_DANGER_FACTOR = 0.75
++LEAD_DANGER_FACTOR = 0.85
+ LIMIT_COST = 1e6
+ ACADOS_SOLVER_TYPE = 'SQP_RTI'
+ 
+diff --git a/selfdrive/controls/lib/longitudinal_planner.py b/selfdrive/controls/lib/longitudinal_planner.py
+index ede511eec0..9633ac241a 100755
+--- a/selfdrive/controls/lib/longitudinal_planner.py
++++ b/selfdrive/controls/lib/longitudinal_planner.py
+@@ -113,8 +113,11 @@ def update(self, sm):
+       self.mpc.mode = 'blended' if sm['controlsState'].experimentalMode else 'acc'
+ 
+     v_ego = sm['carState'].vEgo
++    v_ego_raw = sm['carState'].vEgoRaw
++    v_ego_cluster = sm['carState'].vEgoCluster
++    v_ego_diff = v_ego_raw - v_ego_cluster if v_ego_cluster > 0 else 0
+     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
+-    v_cruise = v_cruise_kph * CV.KPH_TO_MS
++    v_cruise = v_cruise_kph * CV.KPH_TO_MS + v_ego_diff
+ 
+     long_control_off = sm['controlsState'].longControlState == LongCtrlState.off
+     force_slow_decel = sm['controlsState'].forceDecel
